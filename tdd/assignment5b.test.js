@@ -1,4 +1,5 @@
 require("dotenv").config();
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 const pool = require("../db");
 const httpMocks = require("node-mocks-http");
 const {
@@ -38,8 +39,6 @@ describe("testing login, register, and logoff", () => {
     saveRes = httpMocks.createResponse();
     await register(req, saveRes);
     expect(saveRes.statusCode).toBe(201);
-    
-    
     const result = await pool.query('SELECT * FROM users WHERE email = $1', ['jim@sample.com']);
     user1 = result.rows[0].id;
   });
