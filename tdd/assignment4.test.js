@@ -6,7 +6,7 @@ const {
   update,
   deleteTask,
 } = require("../controllers/taskController");
-const { login, register, logoff } = require("../controllers/userController");
+const { logon, register, logoff } = require("../controllers/userController");
 
 // a few useful globals
 let user1 = null;
@@ -33,7 +33,7 @@ beforeAll(async () => {
   setLoggedOnUser(user1);
 });
 
-describe("testing login, register, and logoff", () => {
+describe("testing logon, register, and logoff", () => {
   it("You can register a user.", async () => {
     const req = httpMocks.createRequest({
       method: "POST",
@@ -53,7 +53,7 @@ describe("testing login, register, and logoff", () => {
       body: { email: "jim@sample.com", password: "Pa$$word20" },
     });
     saveRes = httpMocks.createResponse();
-    await login(req, saveRes); // no need for await here
+    await logon(req, saveRes); // no need for await here
     expect(saveRes.statusCode).toBe(200); // success!
   });
 
@@ -67,7 +67,7 @@ describe("testing login, register, and logoff", () => {
       body: { email: "jim@sample.com", password: "bad password" },
     });
     saveRes = httpMocks.createResponse();
-    await login(req, saveRes);
+    await logon(req, saveRes);
     expect(saveRes.statusCode).toBe(401);
   });
   it("You can register an additional user.", async () => {
@@ -90,7 +90,7 @@ describe("testing login, register, and logoff", () => {
     });
     saveRes = httpMocks.createResponse();
     const jsonPromise = saveRes.jsonPromise();
-    login(req, saveRes);
+    logon(req, saveRes);
     await jsonPromise;
     expect(saveRes.statusCode).toBe(200);
   });
