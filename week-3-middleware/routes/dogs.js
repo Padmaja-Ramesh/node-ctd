@@ -1,24 +1,36 @@
 const express = require("express");
 const router = express.Router();
 const dogs = require("../dogData.js");
+const { StatusCodes } = require("http-status-codes");
+const {
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+} = require("../errors");
 
 router.get("/dogs", (req, res) => {
-	res.json(dogs);
+  res.json(dogs);
 });
 
-router.post("/adopt", (req, res) => {
-    const { name, address, email, dogName } = req.body;
-    if (!name || !email || !dogName) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
+router.post("/adopt", (req, res, next) => {
+  const { name, address, email, dogName } = req.body;
+  if (!name || !email || !dogName) {
+    return next(new ValidationError("Missing required fields"));
+  }
+  const findDog = dogs.find(
+    (d) => d.name === dogName && d.status === "available"
+  );
+  if (!findDog) {
+    return next(new NotFoundError("Dog not found or not available"));
+  }
 
-    return res.status(201).json({
-        message: `Adoption request received. We will contact you at ${email} for further details.`,
-    });
+  return res.status(StatusCodes.CREATED).json({
+    message: `Adoption request received. We will contact you at ${email} for further details.`,
+  });
 });
 
 router.get("/error", (req, res) => {
-	throw new Error("Test error");
+  throw new Error("Test error");
 });
 
 module.exports = router;
