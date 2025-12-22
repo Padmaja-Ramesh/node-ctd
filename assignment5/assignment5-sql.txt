@@ -19,3 +19,23 @@ JOIN (
 GROUP BY c.customer_id, c.customer_name
 ORDER BY c.customer_name;
 
+
+SELECT customer_id FROM customers WHERE customer_name ='Perez and Sons';
+SELECT employee_id FROM employees WHERE first_name = 'Miranda' AND last_name='Harris';
+SELECT product_id from products order by price limit 5;
+
+BEGIN;
+INSERT INTO orders (customer_id, employee_id, date)
+VALUES (
+  (SELECT customer_id FROM customers WHERE customer_name = 'Perez and Sons'),
+  (SELECT employee_id FROM employees WHERE first_name = 'Miranda' AND last_name = 'Harris'),
+  '2025-12-22'
+)
+RETURNING order_id;
+
+INSERT INTO line_items (order_id, product_id, quantity)
+SELECT $1, product_id, 10 FROM products ORDER BY price LIMIT 5;
+
+COMMIT;
+
+SELECT * FROM line_items WHERE order_id = $1;
