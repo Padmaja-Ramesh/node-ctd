@@ -5,3 +5,17 @@ JOIN products p ON li.product_id = p.product_id
 GROUP BY o.order_id
 ORDER BY o.order_id
 LIMIT 5;
+
+SELECT c.customer_name, AVG(t.total_price) AS average_order_price
+FROM customers c
+JOIN (
+  SELECT o.customer_id, o.order_id, SUM(p.price * li.quantity) AS total_price
+  FROM orders o
+  JOIN line_items li ON o.order_id = li.order_id
+  JOIN products p ON li.product_id = p.product_id
+  GROUP BY o.customer_id, o.order_id
+) AS t
+  ON c.customer_id = t.customer_id
+GROUP BY c.customer_id, c.customer_name
+ORDER BY c.customer_name;
+
