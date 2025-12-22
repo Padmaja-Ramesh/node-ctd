@@ -39,3 +39,6 @@ SELECT $1, product_id, 10 FROM products ORDER BY price LIMIT 5;
 COMMIT;
 
 SELECT * FROM line_items WHERE order_id = $1;
+
+SELECT e.first_name, e.last_name, count(o.order_id) order_count 
+FROM employees e JOIN orders o ON e.employee_id = o.employee_id GROUP BY e.employee_id, e.first_name,e.last_name ORDER BY e.last_name; 
