@@ -1,5 +1,15 @@
 const express = require("express");
+const userRouter = require("./routes/userRoutes");
+const taskRouter = require("./routes/taskRoutes");
+const authMiddleware = require("./middleware/auth");
+const pool = require("./db/pg-pool");
+
 const app = express();
+app.use(express.json());
+
+global.users = [];
+global.tasks = [];
+global.user_id = null;
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
@@ -9,12 +19,11 @@ app.get("/", (req, res) => {
 app.post("/testpost", (req, res) => {
   res.status(200).send("ok");
 });
-// app.use((err, req, res, next) => {
-//   console.log(`A server error occurred responding to a ${req.method} request for ${req.url}.`, err.name, err.message, err.stack);
-//   if (!res.headersSent) {
-//     res.status(500).send("A server error occurred.");
-//   }
-// });
+console.log("userRouter:", userRouter);
+console.log("taskRouter:", taskRouter);
+app.use("/api/users", userRouter);
+app.use("/api/tasks", authMiddleware, taskRouter);
+
 const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler);
 const notFound = require("./middleware/not-found");
@@ -37,6 +46,7 @@ let isShuttingDown = false;
 async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  await pool.end();
   console.log("Shutting down gracefully...");
   try {
     await new Promise((resolve) => server.close(resolve));
@@ -50,6 +60,17 @@ async function shutdown(code = 0) {
     process.exit(code);
   }
 }
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: `db not connected, error: ${err.message}` });
+  }
+});
 
 process.on("SIGINT", () => shutdown(0)); // ctrl+c
 process.on("SIGTERM", () => shutdown(0)); // e.g. `docker stop`
