@@ -2,6 +2,7 @@ const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
 const authMiddleware = require("./middleware/auth");
+const pool = require("./db/pg-pool");
 
 const app = express();
 app.use(express.json());
@@ -45,6 +46,7 @@ let isShuttingDown = false;
 async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+  await pool.end();
   console.log("Shutting down gracefully...");
   try {
     await new Promise((resolve) => server.close(resolve));
@@ -58,6 +60,17 @@ async function shutdown(code = 0) {
     process.exit(code);
   }
 }
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: `db not connected, error: ${err.message}` });
+  }
+});
 
 process.on("SIGINT", () => shutdown(0)); // ctrl+c
 process.on("SIGTERM", () => shutdown(0)); // e.g. `docker stop`
