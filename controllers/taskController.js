@@ -2,6 +2,7 @@
 const { StatusCodes } = require("http-status-codes");
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
 const pool = require("../db/pg-pool");
+const prisma = require("../db/prisma");
 
 const taskCounter = (() => {
   let lastTaskNumber = 0;
@@ -21,14 +22,20 @@ async function create(req, res, next) {
       message: "Not authenticated",
     });
   }
-  const task = await pool.query(
-    `INSERT INTO tasks (title, is_completed, user_id)
-       VALUES ($1, $2, $3)
-       RETURNING id, title, is_completed`,
-    [value.title, value.isCompleted, global.user_id]
-  );
+  try {
+    const task = await prisma.task.create({
+      data: {
+        title: value.title,
+        isCompleted: value.isCompleted,
+        userId: global.user_id,
+      },
+      select: { title: true, isCompleted: true, userId: true },
+    });
 
-  return res.status(StatusCodes.CREATED).json(task.rows[0]);
+    return res.status(StatusCodes.CREATED).json(task);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 async function index(req, res, next) {
@@ -38,12 +45,18 @@ async function index(req, res, next) {
       .json({ message: "Unauthorized" });
   }
 
-  const tasks = await pool.query(
-    "SELECT id, title, is_completed FROM tasks WHERE user_id = $1",
-    [global.user_id]
-  );
+  // const tasks = await pool.query(
+  //   "SELECT id, title, is_completed FROM tasks WHERE user_id = $1",
+  //   [global.user_id]
+  // );
+  const tasks = await prisma.task.findMany({
+    where: {
+      userId: global.user_id, // only the tasks for this user!
+    },
+    select: { title: true, isCompleted: true, id: true },
+  });
 
-  if (tasks.rows.length === 0) {
+  if (!tasks) {
     return res
       .status(StatusCodes.NOT_FOUND)
       .json({ message: "No tasks found" });
