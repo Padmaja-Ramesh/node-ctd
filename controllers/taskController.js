@@ -1,7 +1,7 @@
 // controllers/taskController.js
 const { StatusCodes } = require("http-status-codes");
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
-const pool = require("../db/pg-pool");
+//const pool = require("../db/pg-pool");
 const prisma = require("../db/prisma");
 
 const taskCounter = (() => {

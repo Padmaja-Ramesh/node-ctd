@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const util = require("util");
 const scrypt = util.promisify(crypto.scrypt);
-const pool = require("../db/pg-pool");
+//const pool = require("../db/pg-pool");
 const prisma = require("../db/prisma");
 const { userSchema } = require("../validation/userSchema");
 

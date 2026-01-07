@@ -2,7 +2,7 @@ const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
 const authMiddleware = require("./middleware/auth");
-const pool = require("./db/pg-pool");
+//const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma");
 
 const app = express();
@@ -63,7 +63,7 @@ let isShuttingDown = false;
 async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  await pool.end();
+  //await pool.end();
   await prisma.$disconnect();
   console.log("Prisma disconnected");
   console.log("Shutting down gracefully...");
