@@ -29,7 +29,7 @@ async function create(req, res, next) {
         isCompleted: value.isCompleted,
         userId: global.user_id,
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true },
     });
 
     return res.status(StatusCodes.CREATED).json(task);
@@ -53,7 +53,19 @@ async function index(req, res, next) {
     where: {
       userId: global.user_id, // only the tasks for this user!
     },
-    select: { title: true, isCompleted: true, id: true },
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      User: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
   });
 
   if (tasks.length == 0) {
