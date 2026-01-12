@@ -2,7 +2,8 @@ const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
 const authMiddleware = require("./middleware/auth");
-const pool = require("./db/pg-pool");
+//const pool = require("./db/pg-pool");
+const prisma = require("./db/prisma");
 
 const app = express();
 app.use(express.json());
@@ -11,9 +12,29 @@ global.users = [];
 global.tasks = [];
 global.user_id = null;
 
+const port = process.env.PORT || 3000;
+const server = app.listen(port, () =>
+  console.log(`Server is listening on port ${port}...`)
+);
+
 app.get("/", (req, res) => {
   res.send("Hello, World!");
   res.status(200);
+});
+
+app.get("/health", async (req, res) => {
+  try {
+    // await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    if (err.name === "PrismaClientInitializationError") {
+      console.error("Couldn't connect to the database. Is it running?");
+    }
+    res
+      .status(500)
+      .json({ message: `db not connected, error: ${err.message}` });
+  }
 });
 
 app.post("/testpost", (req, res) => {
@@ -28,10 +49,6 @@ const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler);
 const notFound = require("./middleware/not-found");
 app.use(notFound);
-const port = process.env.PORT || 3000;
-const server = app.listen(port, () =>
-  console.log(`Server is listening on port ${port}...`)
-);
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
@@ -46,7 +63,9 @@ let isShuttingDown = false;
 async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  await pool.end();
+  //await pool.end();
+  await prisma.$disconnect();
+  console.log("Prisma disconnected");
   console.log("Shutting down gracefully...");
   try {
     await new Promise((resolve) => server.close(resolve));
@@ -60,17 +79,6 @@ async function shutdown(code = 0) {
     process.exit(code);
   }
 }
-
-app.get("/health", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ status: "ok", db: "connected" });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: `db not connected, error: ${err.message}` });
-  }
-});
 
 process.on("SIGINT", () => shutdown(0)); // ctrl+c
 process.on("SIGTERM", () => shutdown(0)); // e.g. `docker stop`
