@@ -28,6 +28,7 @@ async function create(req, res, next) {
         title: value.title,
         isCompleted: value.isCompleted,
         userId: global.user_id,
+        priority: value.priority,
       },
       select: { title: true, isCompleted: true, id: true, priority: true },
     });
