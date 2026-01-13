@@ -50,6 +50,11 @@ async function index(req, res, next) {
   //   "SELECT id, title, is_completed FROM tasks WHERE user_id = $1",
   //   [global.user_id]
   // );
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
   const tasks = await prisma.task.findMany({
     where: {
       userId: global.user_id, // only the tasks for this user!
@@ -67,14 +72,40 @@ async function index(req, res, next) {
         },
       },
     },
+    skip: skip,
+    take: limit,
+    orderBy: { createdAt: "desc" },
   });
+
+  // Get total count for pagination metadata
+  const totalTasks = await prisma.task.count({
+    where: { userId: global.user_id },
+  });
+
+  // Build pagination object with complete metadata
+  // Hint: The test expects page, limit, total, pages, hasNext, hasPrev
+  // Use Math.ceil() to calculate pages, and compare page * limit with total for hasNext
+  // Build pagination object with complete metadata
+  const pagination = {
+    page,
+    limit,
+    total: totalTasks,
+    pages: Math.ceil(totalTasks / limit),
+    hasNext: page * limit < totalTasks,
+    hasPrev: page > 1,
+  };
 
   if (tasks.length == 0) {
     return res
       .status(StatusCodes.NOT_FOUND)
       .json({ message: "No tasks found" });
   }
-  return res.status(StatusCodes.OK).json(tasks);
+
+  // Return tasks with pagination information
+  res.status(StatusCodes.OK).json({
+    tasks,
+    pagination,
+  });
 }
 
 async function show(req, res, next) {
