@@ -54,11 +54,17 @@ async function index(req, res, next) {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
+  // Build where clause with optional search filter
+  const whereClause = { userId: global.user_id };
+  if (req.query.find) {
+    whereClause.title = {
+      contains: req.query.find, // Matches %find% pattern
+      mode: "insensitive", // Case-insensitive search (ILIKE in PostgreSQL)
+    };
+  }
 
   const tasks = await prisma.task.findMany({
-    where: {
-      userId: global.user_id, // only the tasks for this user!
-    },
+    where: whereClause, // only the tasks for this user!,
     select: {
       id: true,
       title: true,
@@ -79,7 +85,7 @@ async function index(req, res, next) {
 
   // Get total count for pagination metadata
   const totalTasks = await prisma.task.count({
-    where: { userId: global.user_id },
+    where: whereClause,
   });
 
   // Build pagination object with complete metadata
@@ -94,12 +100,6 @@ async function index(req, res, next) {
     hasNext: page * limit < totalTasks,
     hasPrev: page > 1,
   };
-
-  if (tasks.length == 0) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ message: "No tasks found" });
-  }
 
   // Return tasks with pagination information
   res.status(StatusCodes.OK).json({
