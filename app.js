@@ -1,6 +1,7 @@
 const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
+const analyticRouter = require("./routes/analyticRoutes");
 const authMiddleware = require("./middleware/auth");
 //const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma");
@@ -40,10 +41,10 @@ app.get("/health", async (req, res) => {
 app.post("/testpost", (req, res) => {
   res.status(200).send("ok");
 });
-console.log("userRouter:", userRouter);
-console.log("taskRouter:", taskRouter);
+
 app.use("/api/users", userRouter);
 app.use("/api/tasks", authMiddleware, taskRouter);
+app.use("/api/analytics", analyticRouter);
 
 const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler);
