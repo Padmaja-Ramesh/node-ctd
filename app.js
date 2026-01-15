@@ -20,7 +20,7 @@ const server = app.listen(port, () =>
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
-  res.status(200);
+  res.status(StatusCodes.OK);
 });
 
 app.get("/health", async (req, res) => {
@@ -44,11 +44,12 @@ app.post("/testpost", (req, res) => {
 
 app.use("/api/users", userRouter);
 app.use("/api/tasks", authMiddleware, taskRouter);
-app.use("/api/analytics", analyticRouter);
+app.use("/api/analytics", authMiddleware, analyticRouter);
 
 const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler);
 const notFound = require("./middleware/not-found");
+const { StatusCodes } = require("http-status-codes");
 app.use(notFound);
 
 server.on("error", (err) => {

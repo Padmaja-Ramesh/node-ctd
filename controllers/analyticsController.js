@@ -2,7 +2,7 @@
 const { StatusCodes } = require("http-status-codes");
 const prisma = require("../db/prisma");
 
-async function userProductivityAnalytics(req, res, next) {
+async function getUserAnalytics(req, res, next) {
   // 1️⃣ Parse & validate user ID
   const userId = parseInt(req.params.id);
 
@@ -80,7 +80,7 @@ async function userProductivityAnalytics(req, res, next) {
   });
 }
 
-async function search(req, res) {
+async function searchTasks(req, res) {
   const searchQuery = req.query.q;
   if (!searchQuery || searchQuery.trim().length < 2) {
     return res.status(StatusCodes.BAD_REQUEST).json({
@@ -125,7 +125,7 @@ async function search(req, res) {
   });
 }
 
-async function userAnalytics(req, res) {
+async function getUsersWithStats(req, res) {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -177,4 +177,4 @@ async function userAnalytics(req, res) {
   });
 }
 
-module.exports = { userProductivityAnalytics, search, userAnalytics };
+module.exports = { getUserAnalytics, searchTasks, getUsersWithStats };

@@ -24,7 +24,9 @@ async function comparePassword(inputPassword, storedHash) {
 
 async function register(req, res, next) {
   if (!req.body) {
-    return res.status(400).json({ message: "Request body is required" });
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "Request body is required" });
   }
   const { error, value } = userSchema.validate(req.body, {
     abortEarly: false,
@@ -105,7 +107,7 @@ async function register(req, res, next) {
   }
 }
 
-async function logon(req, res) {
+async function login(req, res) {
   let { email, password } = req.body;
   email = email.toLowerCase();
 
@@ -147,4 +149,4 @@ function logoff(req, res) {
   res.status(StatusCodes.OK).json({ message: "Logged off" });
 }
 
-module.exports = { register, logon, logoff };
+module.exports = { register, login, logoff };

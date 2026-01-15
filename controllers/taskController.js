@@ -167,7 +167,20 @@ async function show(req, res, next) {
       .json({ message: "The task ID passed is not valid." });
   }
   const task = await prisma.task.findUnique({
-    where: { id_userId: { id: taskId, userId: global.user_id } },
+    where: { id: taskId },
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      userId: true,
+      User: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
 
   try {
@@ -179,7 +192,9 @@ async function show(req, res, next) {
     return res.status(StatusCodes.OK).json(task);
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "The task was not found." });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "The task was not found." });
     } else {
       return next(err); // pass other errors to the global error handler
     }
@@ -217,12 +232,14 @@ async function update(req, res, next) {
       where: {
         id_userId: { id: taskId, userId: global.user_id },
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true },
     });
-    return res.status(200).json(updatedTask);
+    return res.status(StatusCodes.OK).json(updatedTask);
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "The task was not found." });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "The task was not found." });
     } else {
       return next(err); // pass other errors to the global error handler
     }
@@ -248,7 +265,7 @@ async function deleteTask(req, res, next) {
         id_userId: { id: taskId, userId: global.user_id },
       },
     });
-    return res.status(200).json(deletedTask);
+    return res.status(StatusCodes.OK).json(deletedTask);
   } catch (err) {
     if (err.code === "P2025") {
       return res.status(404).json({ message: "The task was not found." });
