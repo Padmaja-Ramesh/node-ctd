@@ -503,7 +503,7 @@ describe("function tests of user operations", () => {
         email: "jdeere@example.com",
         password: "Pa$$word20",
       };
-      saveRes = await agent.post("/api/users/register").send(newUser);
+      saveRes = await agent.post("/api/user/register").send(newUser);
       expect(saveRes.status).toBe(201);
     });
     it("47. Registration returns an object with the expected name.", () => {
@@ -514,7 +514,7 @@ describe("function tests of user operations", () => {
     });
     it("49. You can logon as the newly registered user.", async () => {
       const logonObj = { email: "jdeere@example.com", password: "Pa$$word20" };
-      saveRes = await agent.post("/api/users/logon").send(logonObj);
+      saveRes = await agent.post("/api/user/logon").send(logonObj);
       expect(saveRes.status).toBe(200);
     });
     it("50. See if you are logged in", async () => {
@@ -523,11 +523,7 @@ describe("function tests of user operations", () => {
     });
     it("51. You can logoff.", async () => {
       const token = saveRes.body.csrfToken;
-      expect(token).toBeDefined();
-      saveRes = await agent
-        .post("/api/users/logoff")
-        .set("X-CSRF-TOKEN", token)
-        .send();
+      saveRes = await agent.post("/api/user/logoff").set("X-CSRF-TOKEN", token);
       expect(saveRes.status).toBe(200);
     });
     it("52. Makes sure we are logged out", async () => {

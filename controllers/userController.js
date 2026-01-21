@@ -5,7 +5,25 @@ const scrypt = util.promisify(crypto.scrypt);
 //const pool = require("../db/pg-pool");
 const prisma = require("../db/prisma");
 const { userSchema } = require("../validation/userSchema");
+const { randomUUID } = require("crypto");
+const jwt = require("jsonwebtoken");
 
+const cookieFlags = (req) => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // only when HTTPS is available
+    sameSite: "Strict",
+  };
+};
+
+const setJwtCookie = (req, res, user) => {
+  // Sign JWT
+  const payload = { id: user.id, csrfToken: randomUUID() };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
+  // Set cookie.  Note that the cookie flags have to be different in production and in test.
+  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
+  return payload.csrfToken; // this is needed in the body returned by logon() or register()
+};
 global.users = global.users || [];
 global.user_id = global.user_id || null;
 
@@ -85,14 +103,17 @@ async function register(req, res, next) {
     });
 
     // Store the user ID globally for session management (not secure for production)
-    global.user_id = result.user.id;
+    // req.user.id = result.user.id;
 
     // Send response with status 201
+    const csrfToken = setJwtCookie(req, res, result.user);
     res.status(StatusCodes.CREATED);
     res.json({
-      user: result.user,
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      csrfToken,
       welcomeTasks: result.welcomeTasks,
-      transactionStatus: "success",
     });
     return;
   } catch (err) {
@@ -107,46 +128,99 @@ async function register(req, res, next) {
   }
 }
 
-async function login(req, res) {
-  let { email, password } = req.body;
-  email = email.toLowerCase();
+// async function login(req, res) {
+//   let { email, password } = req.body;
+//   email = email.toLowerCase();
 
-  if (!email || !password) {
-    return res
-      .status(StatusCodes.BAD_REQUEST)
-      .json({ error: "Email and password required" });
+//   if (!email || !password) {
+//     return res
+//       .status(StatusCodes.BAD_REQUEST)
+//       .json({ error: "Email and password required" });
+//   }
+//   // const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+//   //   email,
+//   // ]);
+//   const result = await prisma.user.findUnique({ where: { email } });
+//   if (!result) {
+//     return res
+//       .status(StatusCodes.UNAUTHORIZED)
+//       .json({ error: "Invalid credentials" });
+//   }
+
+//   if (!result.hashedPassword) {
+//     return res
+//       .status(StatusCodes.INTERNAL_SERVER_ERROR)
+//       .json({ error: "User password not set" });
+//   }
+
+//   const isValid = await comparePassword(password, result.hashedPassword);
+
+//   if (!isValid) {
+//     return res
+//       .status(StatusCodes.UNAUTHORIZED)
+//       .json({ error: "Invalid credentials" });
+//   }
+
+//   res.status(StatusCodes.OK).json({ id: result.id, name: result.name });
+// }
+
+async function logon(req, res, next) {
+  try {
+    let { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ error: "Email and password required" });
+    }
+
+    email = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Invalid credentials" });
+    }
+
+    if (!user.hashedPassword) {
+      return res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: "User password not set" });
+    }
+
+    const isValid = await comparePassword(password, user.hashedPassword);
+
+    if (!isValid) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ error: "Invalid credentials" });
+    }
+
+    const csrfToken = setJwtCookie(req, res, user);
+    // ✅ SUCCESS
+    return res.status(StatusCodes.OK).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      csrfToken,
+    });
+  } catch (err) {
+    // 🔥 THIS is what you were missing
+    console.error("LOGIN ERROR:", err);
+    return next(err);
   }
-  // const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-  //   email,
-  // ]);
-  const result = await prisma.user.findUnique({ where: { email } });
-  if (!result) {
-    return res
-      .status(StatusCodes.UNAUTHORIZED)
-      .json({ error: "Invalid credentials" });
-  }
-
-  if (!result.hashedPassword) {
-    return res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ error: "User password not set" });
-  }
-
-  const isValid = await comparePassword(password, result.hashedPassword);
-
-  if (!isValid) {
-    return res
-      .status(StatusCodes.UNAUTHORIZED)
-      .json({ error: "Invalid credentials" });
-  }
-
-  global.user_id = result.id;
-  res.status(StatusCodes.OK).json({ name: result.name });
 }
 
 function logoff(req, res) {
-  global.user_id = null;
-  res.status(StatusCodes.OK).json({ message: "Logged off" });
+  // if (req.user) {
+  //   req.user.id = null;
+  // }
+  res.clearCookie("jwt", cookieFlags(req));
+  return res.status(StatusCodes.OK).json({ message: "Logged off" });
 }
 
-module.exports = { register, login, logoff };
+module.exports = { register, logon, logoff };
