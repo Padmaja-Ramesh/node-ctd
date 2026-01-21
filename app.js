@@ -1,6 +1,7 @@
 const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
+const analyticRouter = require("./routes/analyticRoutes");
 const authMiddleware = require("./middleware/auth");
 //const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma");
@@ -19,7 +20,7 @@ const server = app.listen(port, () =>
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
-  res.status(200);
+  res.status(StatusCodes.OK);
 });
 
 app.get("/health", async (req, res) => {
@@ -40,14 +41,15 @@ app.get("/health", async (req, res) => {
 app.post("/testpost", (req, res) => {
   res.status(200).send("ok");
 });
-console.log("userRouter:", userRouter);
-console.log("taskRouter:", taskRouter);
+
 app.use("/api/users", userRouter);
 app.use("/api/tasks", authMiddleware, taskRouter);
+app.use("/api/analytics", authMiddleware, analyticRouter);
 
 const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler);
 const notFound = require("./middleware/not-found");
+const { StatusCodes } = require("http-status-codes");
 app.use(notFound);
 
 server.on("error", (err) => {

@@ -28,11 +28,57 @@ async function create(req, res, next) {
         title: value.title,
         isCompleted: value.isCompleted,
         userId: global.user_id,
+        priority: value.priority,
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true },
     });
 
     return res.status(StatusCodes.CREATED).json(task);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function bulkCreate(req, res, next) {
+  const { tasks } = req.body;
+
+  // Validate the tasks array
+  if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      error: "Invalid request data. Expected an array of tasks.",
+    });
+  }
+
+  // Validate all tasks before insertion
+  const validTasks = [];
+  for (const task of tasks) {
+    const { error, value } = taskSchema.validate(task);
+    if (error) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: "Validation failed",
+        details: error.details,
+      });
+    }
+    validTasks.push({
+      title: value.title,
+      isCompleted: value.isCompleted || false,
+      priority: value.priority || "medium",
+      userId: global.user_id,
+    });
+  }
+
+  // Use createMany for batch insertion
+  try {
+    const result = await prisma.task.createMany({
+      data: validTasks,
+      skipDuplicates: false,
+    });
+
+    res.status(StatusCodes.CREATED).json({
+      message: "success!",
+      tasksCreated: result.count,
+      totalRequested: validTasks.length,
+    });
   } catch (err) {
     return next(err);
   }
@@ -49,19 +95,62 @@ async function index(req, res, next) {
   //   "SELECT id, title, is_completed FROM tasks WHERE user_id = $1",
   //   [global.user_id]
   // );
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  // Build where clause with optional search filter
+  const whereClause = { userId: global.user_id };
+  if (req.query.find) {
+    whereClause.title = {
+      contains: req.query.find, // Matches %find% pattern
+      mode: "insensitive", // Case-insensitive search (ILIKE in PostgreSQL)
+    };
+  }
+
   const tasks = await prisma.task.findMany({
-    where: {
-      userId: global.user_id, // only the tasks for this user!
+    where: whereClause, // only the tasks for this user!,
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      User: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
-    select: { title: true, isCompleted: true, id: true },
+    skip: skip,
+    take: limit,
+    orderBy: { createdAt: "desc" },
   });
 
-  if (tasks.length == 0) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ message: "No tasks found" });
-  }
-  return res.status(StatusCodes.OK).json(tasks);
+  // Get total count for pagination metadata
+  const totalTasks = await prisma.task.count({
+    where: whereClause,
+  });
+
+  // Build pagination object with complete metadata
+  // Hint: The test expects page, limit, total, pages, hasNext, hasPrev
+  // Use Math.ceil() to calculate pages, and compare page * limit with total for hasNext
+  // Build pagination object with complete metadata
+  const pagination = {
+    page,
+    limit,
+    total: totalTasks,
+    pages: Math.ceil(totalTasks / limit),
+    hasNext: page * limit < totalTasks,
+    hasPrev: page > 1,
+  };
+
+  // Return tasks with pagination information
+  res.status(StatusCodes.OK).json({
+    tasks,
+    pagination,
+  });
 }
 
 async function show(req, res, next) {
@@ -78,7 +167,20 @@ async function show(req, res, next) {
       .json({ message: "The task ID passed is not valid." });
   }
   const task = await prisma.task.findUnique({
-    where: { id_userId: { id: taskId, userId: global.user_id } },
+    where: { id: taskId },
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      userId: true,
+      User: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
 
   try {
@@ -90,7 +192,9 @@ async function show(req, res, next) {
     return res.status(StatusCodes.OK).json(task);
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "The task was not found." });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "The task was not found." });
     } else {
       return next(err); // pass other errors to the global error handler
     }
@@ -128,12 +232,14 @@ async function update(req, res, next) {
       where: {
         id_userId: { id: taskId, userId: global.user_id },
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true },
     });
-    return res.status(200).json(updatedTask);
+    return res.status(StatusCodes.OK).json(updatedTask);
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "The task was not found." });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "The task was not found." });
     } else {
       return next(err); // pass other errors to the global error handler
     }
@@ -159,7 +265,7 @@ async function deleteTask(req, res, next) {
         id_userId: { id: taskId, userId: global.user_id },
       },
     });
-    return res.status(200).json(deletedTask);
+    return res.status(StatusCodes.OK).json(deletedTask);
   } catch (err) {
     if (err.code === "P2025") {
       return res.status(404).json({ message: "The task was not found." });
@@ -169,4 +275,4 @@ async function deleteTask(req, res, next) {
   }
 }
 
-module.exports = { index, show, create, update, deleteTask };
+module.exports = { index, show, create, update, deleteTask, bulkCreate };
