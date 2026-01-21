@@ -75,7 +75,7 @@ async function index(req, res, next) {
     });
     if (!tasks.length)
       return res.status(404).json({ message: "No tasks found" });
-    res.status(200).json(tasks);
+    res.status(200).json({ tasks });
   } catch (err) {
     next(err);
   }
