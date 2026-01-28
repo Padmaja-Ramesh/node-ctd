@@ -40,6 +40,7 @@ afterAll(() => {
 });
 
 let jwtCookie;
+let req;
 describe("testing logon, register, and logoff", () => {
   it("33. A user can be registered.", async () => {
     const req = httpMocks.createRequest({
@@ -111,5 +112,77 @@ describe("testing logon, register, and logoff", () => {
     await waitForRouteHandlerCompletion(register, req, res);
 
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe("Testing JWT middleware", () => {
+  it("61.jwtMiddleware Returns a 401 if the JWT cookie is not present in the req", async () => {
+    const req = httpMocks.createRequest({
+      method: "POST",
+    });
+    saveRes = MockResponseWithCookies();
+    await waitForRouteHandlerCompletion(jwtMiddleware, req, saveRes);
+    expect(saveRes.statusCode).toBe(401);
+  });
+  it("62. Returns a 401 if the JWT is invalid", async () => {
+    const req = httpMocks.createRequest({
+      method: "POST",
+    });
+    saveRes = MockResponseWithCookies();
+    const jwtCookie = jwt.sign({ id: 5, csrfToken: "badToken" }, "badSecret", {
+      expiresIn: "1h",
+    });
+    req.cookies = { jwt: jwtCookie };
+    await waitForRouteHandlerCompletion(jwtMiddleware, req, saveRes);
+    expect(saveRes.statusCode).toBe(401);
+  });
+  it("63. Returns a 401 if the JWT is valid but the CSRF token isn't.", async () => {
+    const req = httpMocks.createRequest({
+      method: "POST",
+    });
+    saveRes = MockResponseWithCookies();
+    const jwtCookie = jwt.sign(
+      { id: 5, csrfToken: "badToken" },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      },
+    );
+    req.cookies = { jwt: jwtCookie };
+    if (!req.headers) {
+      req.headers = {};
+    }
+    req.headers["X-CSRF-TOKEN"] = "goodtoken";
+    await waitForRouteHandlerCompletion(jwtMiddleware, req, saveRes);
+
+    expect(saveRes.statusCode).toBe(401);
+  });
+  it("64. Calls next() if both the token and the jwt are good.", async () => {
+    req = httpMocks.createRequest({
+      method: "POST",
+    });
+    saveRes = MockResponseWithCookies();
+    const jwtCookie = jwt.sign(
+      { id: 5, csrfToken: "goodtoken" },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      },
+    );
+    req.cookies = { jwt: jwtCookie };
+    if (!req.headers) {
+      req.headers = {};
+    }
+    req.headers["X-CSRF-TOKEN"] = "goodtoken";
+
+    const next = await waitForRouteHandlerCompletion(
+      jwtMiddleware,
+      req,
+      saveRes,
+    );
+    expect(next).toHaveBeenCalled();
+  });
+  it("65. If both the token and the jwt are good, req.user.id has the appropriate value", async () => {
+    expect(req.user.id).toBe(5);
   });
 });
