@@ -99,7 +99,7 @@ exports.register = async (req, res, next) => {
   } catch (err) {
     if (err.code === "P2002") {
       // send the appropriate error back -- the email was already registered
-      return res.status(400).json({ error: "Email already registered" });
+      return res.status(401).json({ error: "Email already registered" });
     } else {
       return next(err); // the error handler takes care of other errors
     }
