@@ -43,8 +43,12 @@ let jwtCookie;
 let req;
 describe("testing logon, register, and logoff", () => {
   it("33. A user can be registered.", async () => {
+    process.env.RECAPTCHA_BYPASS = "test-bypass";
     const req = httpMocks.createRequest({
       method: "POST",
+      headers: {
+        "X-Recaptcha-Test": "test-bypass",
+      },
       body: { name: "Bob", email: "bob@sample.com", password: "Pa$$word20" },
     });
     saveRes = MockResponseWithCookies();
@@ -101,8 +105,12 @@ describe("testing logon, register, and logoff", () => {
     expect(saveRes.statusCode).toBe(401); // success!
   });
   it("42. You can't register with an email address that is already registered.", async () => {
+    process.env.RECAPTCHA_BYPASS = "test-bypass";
     let req = httpMocks.createRequest({
       method: "POST",
+      headers: {
+        "X-Recaptcha-Test": "test-bypass",
+      },
       body: { name: "Bob", email: "bob@sample.com", password: "Pa$$word20" },
     });
     let res = MockResponseWithCookies();
@@ -111,7 +119,7 @@ describe("testing logon, register, and logoff", () => {
     res = MockResponseWithCookies();
     await waitForRouteHandlerCompletion(register, req, res);
 
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(400);
   });
 });
 

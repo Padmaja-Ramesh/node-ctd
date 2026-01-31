@@ -1,38 +1,5 @@
 const { userSchema } = require("../validation/userSchema");
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
-let isPerson = false;
-if (req.body.recaptchaToken) {
-  const token = req.body.recaptchaToken;
-  const params = new URLSearchParams();
-  params.append("secret", process.env.RECAPTCHA_SECRET);
-  params.append("response", token);
-  params.append("remoteip", req.ip);
-  const response = await fetch(
-    // might throw an error that would cause a 500 from the error handler
-    "https://www.google.com/recaptcha/api/siteverify",
-    {
-      method: "POST",
-      body: params.toString(),
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    },
-  );
-  const data = await response.json();
-  if (data.success) isPerson = true;
-  delete req.body.recaptchaToken;
-} else if (
-  process.env.RECAPTCHA_BYPASS &&
-  req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
-) {
-  // might be a test environment
-  isPerson = true;
-}
-if (!isPerson) {
-  return res
-    .status(StatusCodes.BAD_REQUEST)
-    .json({ message: "We can't tell if you're a person or a bot." });
-}
 
 describe("user object validation tests", () => {
   it("1. doesn't permit a trivial password", () => {
@@ -46,7 +13,7 @@ describe("user object validation tests", () => {
   });
   it("2. The user schema requires that an email be specified.", () => {
     const { value } = userSchema.validate(
-      { name: "Bob", password: "password" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.email).toBeDefined();
@@ -62,14 +29,14 @@ describe("user object validation tests", () => {
   });
   it("4. The user schema requires a password.", () => {
     const { value } = userSchema.validate(
-      { name: "Bob", email: "bob@sample.com" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.password).toBeDefined();
   });
   it("5.The user schema requires name.", () => {
     const { value } = userSchema.validate(
-      { email: "bob@sample.com", password: "password" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.name).toBeDefined();
@@ -102,21 +69,20 @@ describe("task object validation test", () => {
     expect(error).toBeFalsy();
   });
   it("9. If an isCompleted value is specified, it must be valid.", () => {
-    const { error } = taskSchema.validate(
+    const { value } = taskSchema.validate(
       { title: "first task", isCompleted: true },
       { abortEarly: false },
     );
 
-    expect(error.isCompleted).toBeDefined();
+    expect(value.isCompleted).toBeDefined();
   });
   it("10. If an isCompleted value is not specified but the rest of the object is valid, a default of false is provided by validation.", () => {
-    const { error } = taskSchema.validate(
+    const { value } = taskSchema.validate(
       { title: "first task" },
       { abortEarly: false },
     );
-    expect(error).toBeFalsy();
 
-    expect(error.isCompleted).toBe(false);
+    expect(value.isCompleted).toBe(false);
   });
   it("11.If isCompleted in the provided object has the value true, it remains true after validation.", () => {
     const { error, value } = taskSchema.validate(

@@ -128,14 +128,16 @@ describe("test getting created tasks", () => {
       body: { title: "first task" },
     });
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
-    await expect(
-      waitForRouteHandlerCompletion(index, req, saveRes),
-    ).rejects.toThrow();
+    await waitForRouteHandlerCompletion(index, req, saveRes);
+
+    expect(saveRes.statusCode).toBe(401);
+    expect(saveRes._getJSONData().message).toBe("Unauthorized");
   });
   it("21. If you use user1's id on index() the call returns a 200 status.", async () => {
     const req = httpMocks.createRequest({
       method: "GET",
     });
+    req.user = { id: user1.id };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
     await waitForRouteHandlerCompletion(index, req, saveRes);
     expect(saveRes.statusCode).toBe(200);
@@ -156,7 +158,7 @@ describe("test getting created tasks", () => {
     const req = httpMocks.createRequest({
       method: "GET",
     });
-    global.user_id = user2.id;
+    req.user = { id: user2.id };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
     await waitForRouteHandlerCompletion(index, req, saveRes);
     expect(saveRes.statusCode).toBe(404);
@@ -165,7 +167,7 @@ describe("test getting created tasks", () => {
     const req = httpMocks.createRequest({
       method: "GET",
     });
-    global.user_id = user1.id;
+    req.user = { id: user1.id };
 
     req.params = { id: saveTaskId.toString() };
     res = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -176,7 +178,7 @@ describe("test getting created tasks", () => {
     const req = httpMocks.createRequest({
       method: "GET",
     });
-    global.user_id = user2.id;
+    req.user = { id: user2.id };
 
     req.params = { id: saveTaskId.toString() };
     res = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -191,7 +193,7 @@ describe("testing the update and delete of tasks", () => {
       method: "PATCH",
       body: { title: "first task" },
     });
-    global.user_id = user1.id;
+    req.user = { id: user1.id };
     req.params = { id: saveTaskId.toString() };
     req.body = { isCompleted: true };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -203,7 +205,7 @@ describe("testing the update and delete of tasks", () => {
       method: "PATCH",
       body: { title: "first task" },
     });
-    global.user_id = user2.id;
+    req.user = { id: user2.id };
     req.params = { id: saveTaskId.toString() };
     req.body = { isCompleted: true };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -215,7 +217,7 @@ describe("testing the update and delete of tasks", () => {
       method: "DELETE",
       body: { title: "first task" },
     });
-    global.user_id = user2.id;
+    req.user = { id: user2.id };
     req.params = { id: saveTaskId.toString() };
     req.body = { isCompleted: true };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -227,7 +229,7 @@ describe("testing the update and delete of tasks", () => {
       method: "DELETE",
       body: { title: "first task" },
     });
-    global.user_id = user1.id;
+    req.user = { id: user1.id };
     req.params = { id: saveTaskId.toString() };
     req.body = { isCompleted: true };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
@@ -239,11 +241,11 @@ describe("testing the update and delete of tasks", () => {
       method: "GET",
       body: { title: "first task" },
     });
-    global.user_id = user1.id;
+    req.user = { id: user1.id };
     req.params = { id: saveTaskId.toString() };
     req.body = { isCompleted: true };
     saveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
-    await waitForRouteHandlerCompletion(index, req, saveRes);
+    await waitForRouteHandlerCompletion(show, req, saveRes);
     expect(saveRes.statusCode).toBe(404);
   });
 });

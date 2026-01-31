@@ -88,7 +88,7 @@ async function show(req, res, next) {
 
   try {
     const task = await prisma.task.findUnique({
-      where: { id: taskId },
+      where: { id: taskId, userId: req.user.id },
       select: { id: true, title: true, isCompleted: true, priority: true },
     });
     if (!task) return res.status(404).json({ message: "Task not found" });
