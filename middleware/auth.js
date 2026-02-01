@@ -1,7 +1,7 @@
 const { StatusCodes } = require("http-status-codes");
 
 module.exports = function authMiddleware(req, res, next) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
       .json({ message: "Unauthorized" });

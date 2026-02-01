@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   const timestamp = new Date().toISOString();
   console.log(
-    `[${timestamp}]: ${req.method} ${req.originalUrl} (${req.requestId})`
+    `[${timestamp}]: ${req.method} ${req.originalUrl} (${req.requestId})`,
   );
   next();
 });
@@ -44,7 +44,7 @@ app.use("/api/users", userRouter);
 app.post("/api/users", (req, res) => {
   const newUser = { ...req.body }; // this makes a copy
   global.users.push(newUser);
-  global.user_id = newUser; // After the registration step, the user is set to logged on.
+  req.user.id = newUser; // After the registration step, the user is set to logged on.
   delete req.body.password;
   res.status(201).json(req.body);
 });
@@ -89,6 +89,6 @@ app.use((req, res) => {
   });
 });
 const server = app.listen(3000, () =>
-  console.log("Server listening on port 3000")
+  console.log("Server listening on port 3000"),
 );
 module.exports = server;

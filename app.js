@@ -2,9 +2,15 @@ const express = require("express");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
 const analyticRouter = require("./routes/analyticRoutes");
-const authMiddleware = require("./middleware/auth");
 //const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma");
+const helmet = require("helmet");
+const { xss } = require("express-xss-sanitizer");
+const rateLimiter = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const notFound = require("./middleware/not-found");
+const { StatusCodes } = require("http-status-codes");
+const errorHandler = require("./middleware/error-handler");
 
 const app = express();
 app.use(express.json());
@@ -15,13 +21,15 @@ global.user_id = null;
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () =>
-  console.log(`Server is listening on port ${port}...`)
+  console.log(`Server is listening on port ${port}...`),
 );
 
-app.get("/", (req, res) => {
-  res.send("Hello, World!");
-  res.status(StatusCodes.OK);
-});
+app.set("trust proxy", 1);
+
+// app.get("/", (req, res) => {
+//   res.send("Hello, World!");
+//   res.status(StatusCodes.OK);
+// });
 
 app.get("/health", async (req, res) => {
   try {
@@ -42,14 +50,23 @@ app.post("/testpost", (req, res) => {
   res.status(200).send("ok");
 });
 
+app.use(cookieParser());
+app.use(
+  rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  }),
+);
+app.use(helmet());
+app.use(xss());
+// app.use("/", userRouter);
 app.use("/api/users", userRouter);
-app.use("/api/tasks", authMiddleware, taskRouter);
-app.use("/api/analytics", authMiddleware, analyticRouter);
 
-const errorHandler = require("./middleware/error-handler");
+app.use("/api/tasks", taskRouter);
+app.use("/api/analytics", analyticRouter);
+
 app.use(errorHandler);
-const notFound = require("./middleware/not-found");
-const { StatusCodes } = require("http-status-codes");
+
 app.use(notFound);
 
 server.on("error", (err) => {
