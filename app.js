@@ -60,7 +60,7 @@ app.use(
 app.use(helmet());
 app.use(xss());
 // app.use("/", userRouter);
-app.use("/api/users", userRouter);
+app.use("/api/user", userRouter);
 
 app.use("/api/tasks", taskRouter);
 app.use("/api/analytics", analyticRouter);

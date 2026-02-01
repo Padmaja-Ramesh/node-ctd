@@ -101,68 +101,26 @@ async function register(req, res, next) {
 
       return { user: newUser, welcomeTasks };
     });
-
-    // Store the user ID globally for session management (not secure for production)
-    // req.user.id = result.user.id;
-
-    // Send response with status 201
     const csrfToken = setJwtCookie(req, res, result.user);
-    res.status(StatusCodes.CREATED);
-    res.json({
-      id: result.user.id,
-      name: result.user.name,
-      email: result.user.email,
+    return res.status(StatusCodes.CREATED).json({
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+      },
       csrfToken,
       welcomeTasks: result.welcomeTasks,
     });
-    return;
   } catch (err) {
     if (err.code === "P2002") {
-      // send the appropriate error back -- the email was already registered
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ error: "Email already registered" });
     } else {
-      return next(err); // the error handler takes care of other errors
+      return next(err);
     }
   }
 }
-
-// async function login(req, res) {
-//   let { email, password } = req.body;
-//   email = email.toLowerCase();
-
-//   if (!email || !password) {
-//     return res
-//       .status(StatusCodes.BAD_REQUEST)
-//       .json({ error: "Email and password required" });
-//   }
-//   // const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-//   //   email,
-//   // ]);
-//   const result = await prisma.user.findUnique({ where: { email } });
-//   if (!result) {
-//     return res
-//       .status(StatusCodes.UNAUTHORIZED)
-//       .json({ error: "Invalid credentials" });
-//   }
-
-//   if (!result.hashedPassword) {
-//     return res
-//       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-//       .json({ error: "User password not set" });
-//   }
-
-//   const isValid = await comparePassword(password, result.hashedPassword);
-
-//   if (!isValid) {
-//     return res
-//       .status(StatusCodes.UNAUTHORIZED)
-//       .json({ error: "Invalid credentials" });
-//   }
-
-//   res.status(StatusCodes.OK).json({ id: result.id, name: result.name });
-// }
 
 async function logon(req, res, next) {
   try {
@@ -201,7 +159,6 @@ async function logon(req, res, next) {
     }
 
     const csrfToken = setJwtCookie(req, res, user);
-    // ✅ SUCCESS
     return res.status(StatusCodes.OK).json({
       id: user.id,
       name: user.name,
@@ -209,16 +166,12 @@ async function logon(req, res, next) {
       csrfToken,
     });
   } catch (err) {
-    // 🔥 THIS is what you were missing
     console.error("LOGIN ERROR:", err);
     return next(err);
   }
 }
 
 function logoff(req, res) {
-  // if (req.user) {
-  //   req.user.id = null;
-  // }
   res.clearCookie("jwt", cookieFlags(req));
   return res.status(StatusCodes.OK).json({ message: "Logged off" });
 }
