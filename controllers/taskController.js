@@ -64,17 +64,62 @@ async function bulkCreate(req, res, next) {
   }
 }
 
+// async function index(req, res, next) {
+//   if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+
+//   try {
+//     const tasks = await prisma.task.findMany({
+//       where: { userId: req.user.id },
+//       select: { id: true, title: true, isCompleted: true, priority: true },
+//       orderBy: { createdAt: "desc" },
+//     });
+//     if (!tasks.length)
+//       return res.status(404).json({ message: "No tasks found" });
+//     res.status(200).json({ tasks });
+//   } catch (err) {
+//     next(err);
+//   }
+// }
 async function index(req, res, next) {
-  if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+  if (!req.user?.id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
   try {
+    const { sortBy = "createdAt", sortDirection = "desc", find } = req.query;
+
+    const allowedSortFields = ["createdAt", "priority", "title", "isCompleted"];
+
+    const safeSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
+
+    const safeSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+    const whereClause = { userId: req.user.id };
+
+    if (find) {
+      whereClause.title = { contains: find, mode: "insensitive" };
+    }
+
     const tasks = await prisma.task.findMany({
-      where: { userId: req.user.id },
-      select: { id: true, title: true, isCompleted: true, priority: true },
-      orderBy: { createdAt: "desc" },
+      where: whereClause,
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+        priority: true,
+        createdAt: true,
+      },
+      orderBy: {
+        [safeSortBy]: safeSortDirection,
+      },
     });
-    if (!tasks.length)
+
+    if (!tasks.length) {
       return res.status(404).json({ message: "No tasks found" });
+    }
+
     res.status(200).json({ tasks });
   } catch (err) {
     next(err);

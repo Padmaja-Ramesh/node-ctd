@@ -5,8 +5,28 @@ const {
   getUsersWithStats,
 } = require("../controllers/analyticsController");
 
+const {
+  authenticateUser,
+  authorizeRoles,
+  authorizeOwnerOrAdmin,
+} = require("../middleware/auth");
+
 const router = express.Router();
-router.get("/users", getUsersWithStats);
-router.get("/users/:id", getUserAnalytics);
-router.get("/tasks/search", searchTasks);
+
+router.get(
+  "/users/stats",
+  authenticateUser,
+  authorizeRoles("ADMIN"),
+  getUsersWithStats,
+);
+
+router.get(
+  "/users/:id",
+  authenticateUser,
+  authorizeOwnerOrAdmin,
+  getUserAnalytics,
+);
+
+router.get("/tasks/search", authenticateUser, searchTasks);
+
 module.exports = router;
