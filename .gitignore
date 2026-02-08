@@ -25,6 +25,6 @@ package-lock.json
 
 /generated/prisma
 
-.github/*
-.agents/*
-.cursor/*
+.github/
+.agents/
+.cursor/
