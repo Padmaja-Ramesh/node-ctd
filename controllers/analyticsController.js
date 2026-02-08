@@ -90,39 +90,73 @@ async function searchTasks(req, res) {
 
   const limit = Number.parseInt(req.query.limit, 10) || 20;
 
-  const searchPattern = `%${searchQuery}%`;
+  const loggedInUserId = req.user.id;
+  const role = req.user.role || "USER";
+
+  // Patterns for ranking
   const exactMatch = searchQuery;
   const startsWith = `${searchQuery}%`;
+  const contains = `%${searchQuery}%`;
 
-  const searchResults = await prisma.$queryRaw`
-  SELECT 
-    t.id,
-    t.title,
-    t.is_completed as "isCompleted",
-    t.priority,
-    t.created_at as "createdAt",
-    t.user_id as "userId",
-    u.name as "user_name"
-  FROM tasks t
-  JOIN users u ON t.user_id = u.id
-  WHERE t.title ILIKE ${searchPattern} 
-     OR u.name ILIKE ${searchPattern}
-  ORDER BY 
-    CASE 
-      WHEN t.title ILIKE ${exactMatch} THEN 1
-      WHEN t.title ILIKE ${startsWith} THEN 2
-      WHEN t.title ILIKE ${searchPattern} THEN 3
-      ELSE 4
-    END,
-    t.created_at DESC
-  LIMIT ${parseInt(limit)}
-`;
+  // Build base SQL query
+  let baseQuery = `
+    SELECT 
+      t.id,
+      t.title,
+      t.is_completed AS "isCompleted",
+      t.priority,
+      t.created_at AS "createdAt",
+      t.user_id AS "userId",
+      u.name AS "user_name"
+    FROM tasks t
+    JOIN users u ON t.user_id = u.id
+    WHERE t.title ILIKE $1
+  `;
 
-  res.status(StatusCodes.OK).json({
-    query: searchQuery,
-    count: searchResults.length,
-    results: searchResults,
-  });
+  const params = [contains]; // $1
+
+  // Admins can also search by user name
+  if (role === "ADMIN") {
+    baseQuery += ` OR u.name ILIKE $2`;
+    params.push(contains); // $2
+  }
+
+  // Normal users can only see their own tasks
+  if (role !== "ADMIN") {
+    baseQuery += ` AND t.user_id = $${params.length + 1}`;
+    params.push(loggedInUserId);
+  }
+
+  // Order by ranking
+  baseQuery += `
+    ORDER BY
+      CASE
+        WHEN t.title ILIKE $${params.length + 1} THEN 1
+        WHEN t.title ILIKE $${params.length + 2} THEN 2
+        WHEN t.title ILIKE $${params.length + 3} THEN 3
+        ELSE 4
+      END,
+      t.created_at DESC
+    LIMIT $${params.length + 4}
+  `;
+
+  // Add ranking parameters
+  params.push(exactMatch, startsWith, contains, limit);
+
+  try {
+    const searchResults = await prisma.$queryRawUnsafe(baseQuery, ...params);
+
+    res.status(StatusCodes.OK).json({
+      query: searchQuery,
+      count: searchResults.length,
+      results: searchResults,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "An error occurred while searching tasks",
+    });
+  }
 }
 
 async function getUsersWithStats(req, res) {

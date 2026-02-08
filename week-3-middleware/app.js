@@ -13,7 +13,7 @@ global.tasks = [];
 const app = express();
 
 // Your middleware here
-app.use(express.json({ limit: "1kb" }), express.urlencoded({ limit: "1mb" }));
+app.use(express.json({ limit: "5mb" }), express.urlencoded({ limit: "1mb" }));
 app.use("/images", express.static("public/images"));
 app.use((req, res, next) => {
   req.requestId = uuidv4();
