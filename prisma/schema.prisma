@@ -7,11 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  USER
+}
+
 model User {
   id             Int      @id @default(autoincrement())
   email          String   @unique @db.VarChar(255)
   name           String   @db.VarChar(30)
   hashedPassword String   @db.VarChar(255) @map("hashed_password")
+  role           Role     @default(USER)
   createdAt     DateTime @default(now()) @db.Timestamp(6) @map("created_at")
   Task          Task[]
   @@map("users")

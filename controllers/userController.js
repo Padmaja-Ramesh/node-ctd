@@ -18,7 +18,7 @@ const cookieFlags = (req) => {
 
 const setJwtCookie = (req, res, user) => {
   // Sign JWT
-  const payload = { id: user.id, csrfToken: randomUUID() };
+  const payload = { id: user.id, role: user.role, csrfToken: randomUUID() };
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
   // Set cookie.  Note that the cookie flags have to be different in production and in test.
   res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
@@ -45,6 +45,39 @@ async function register(req, res, next) {
     return res
       .status(StatusCodes.BAD_REQUEST)
       .json({ message: "Request body is required" });
+  }
+  let isPerson = false;
+  if (req.body.recaptchaToken) {
+    const token = req.body.recaptchaToken;
+    const params = new URLSearchParams();
+    params.append("secret", process.env.RECAPTCHA_SECRET);
+    params.append("response", token);
+    params.append("remoteip", req.ip);
+    const response = await fetch(
+      // might throw an error that would cause a 500 from the error handler
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        body: params.toString(),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+    );
+    const data = await response.json();
+    if (data.success) isPerson = true;
+    delete req.body.recaptchaToken;
+  } else if (
+    process.env.RECAPTCHA_BYPASS &&
+    req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
+  ) {
+    // might be a test environment
+    isPerson = true;
+  }
+  if (!isPerson) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "We can't tell if you're a person or a bot." });
   }
   const { error, value } = userSchema.validate(req.body, {
     abortEarly: false,
@@ -109,9 +142,11 @@ async function register(req, res, next) {
     const csrfToken = setJwtCookie(req, res, result.user);
     res.status(StatusCodes.CREATED);
     res.json({
-      id: result.user.id,
-      name: result.user.name,
-      email: result.user.email,
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+      },
       csrfToken,
       welcomeTasks: result.welcomeTasks,
     });
@@ -206,6 +241,7 @@ async function logon(req, res, next) {
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
       csrfToken,
     });
   } catch (err) {

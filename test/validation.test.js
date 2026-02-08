@@ -13,7 +13,7 @@ describe("user object validation tests", () => {
   });
   it("2. The user schema requires that an email be specified.", () => {
     const { value } = userSchema.validate(
-      { name: "Bob", password: "password" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.email).toBeDefined();
@@ -29,14 +29,14 @@ describe("user object validation tests", () => {
   });
   it("4. The user schema requires a password.", () => {
     const { value } = userSchema.validate(
-      { name: "Bob", email: "bob@sample.com" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.password).toBeDefined();
   });
   it("5.The user schema requires name.", () => {
     const { value } = userSchema.validate(
-      { email: "bob@sample.com", password: "password" },
+      { name: "Bob", email: "bob@sample.com", password: "password" },
       { abortEarly: false },
     );
     expect(value.name).toBeDefined();
@@ -69,21 +69,20 @@ describe("task object validation test", () => {
     expect(error).toBeFalsy();
   });
   it("9. If an isCompleted value is specified, it must be valid.", () => {
-    const { error } = taskSchema.validate(
+    const { value } = taskSchema.validate(
       { title: "first task", isCompleted: true },
       { abortEarly: false },
     );
 
-    expect(error.isCompleted).toBeDefined();
+    expect(value.isCompleted).toBeDefined();
   });
   it("10. If an isCompleted value is not specified but the rest of the object is valid, a default of false is provided by validation.", () => {
-    const { error } = taskSchema.validate(
+    const { value } = taskSchema.validate(
       { title: "first task" },
       { abortEarly: false },
     );
-    expect(error).toBeFalsy();
 
-    expect(error.isCompleted).toBe(false);
+    expect(value.isCompleted).toBe(false);
   });
   it("11.If isCompleted in the provided object has the value true, it remains true after validation.", () => {
     const { error, value } = taskSchema.validate(

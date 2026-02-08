@@ -20,12 +20,16 @@ afterAll(async () => {
 describe("register a user ", () => {
   let saveRes = null; // we'll declare this out here, so that we can reference it in several tests
   it("46. it creates the user entry", async () => {
+    process.env.RECAPTCHA_BYPASS = "test-bypass";
     const newUser = {
       name: "John Deere",
       email: "jdeere@example.com",
       password: "Pa$$word20",
     };
-    saveRes = await agent.post("/api/users/register").send(newUser);
+    saveRes = await agent
+      .post("/api/users/register")
+      .set("X-Recaptcha-Test", process.env.RECAPTCHA_BYPASS)
+      .send(newUser);
     expect(saveRes.status).toBe(201);
   });
   it("47. Registration returns an object with the expected name.", async () => {
